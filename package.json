@@ -2,6 +2,10 @@
   "name": "@veyminore/zetro",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "agents": "node packages/antigravity-adapter/dist/cli.js",
     "rct:demo": "node packages/rct-runtime/src/cli.js demo",

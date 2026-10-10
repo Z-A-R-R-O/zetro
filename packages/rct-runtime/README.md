@@ -8,7 +8,10 @@ npm test
 npm run demo
 node src/cli.js probe
 node src/cli.js live-fixture
+node src/cli.js plan path/to/assignment.json
 ```
+
+`plan` is a dry-run admission check for `rct.assignment.v1` manifests. It rejects missing or inaccessible source roots, missing read/write files, path traversal, and symlink/junction components in read, write, or create scope. Only `createPaths` may name a file that does not exist yet. It reports a bounded plan and makes no provider call or source edit. Admission does not itself run a private-source assignment, and there is no private-source live coding CLI.
 
 `probe` reports `not_configured` without making a network call when `GROQ_API_KEY` is absent. If the key is set in the current process environment, it first checks authenticated model access, then makes one small synthetic tool-call request to Groq. The output names the failing stage; the key is never printed. The two pilot model IDs are `qwen/qwen3.8-27b` and `openai/gpt-oss-120b`. The live probe may consume the account's API quota. The provider implementation follows [Groq's API reference](https://console.groq.com/docs/api-reference) and [local tool calling format](https://console.groq.com/docs/tool-use/local-tool-calling).
 

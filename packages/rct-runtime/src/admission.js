@@ -32,28 +32,29 @@ function validateRelativePath(value) {
   return { ok: true, canonical: segments.join('/') };
 }
 
-async function checkSymlinkEscape(rootDir, relative) {
-  try {
-    const rootReal = await realpath(rootDir);
-    let current = rootReal;
-    for (const segment of relative.split('/')) {
-      current = path.join(current, segment);
-      try {
-        const stat = await lstat(current);
-        if (stat.isSymbolicLink()) return { escape: true, reason: `symlink detected: ${relative}` };
-      } catch {
-        // path doesn't exist yet; that's ok for createPaths
-        return { escape: false };
-      }
+async function checkScopedPath(rootReal, relative, allowMissing) {
+  let current = rootReal;
+  for (const segment of relative.split('/')) {
+    current = path.join(current, segment);
+    let stat;
+    try {
+      stat = await lstat(current);
+    } catch (err) {
+      if (err.code === 'ENOENT' && allowMissing) return null;
+      return { path: relative, reason: err.code === 'ENOENT' ? 'path does not exist' : `path is not accessible: ${err.code ?? err.message}` };
     }
-    const resolved = await realpath(current);
-    if (!resolved.startsWith(rootReal + path.sep) && resolved !== rootReal) {
-      return { escape: true, reason: `junction/link escape: ${relative} resolves outside root` };
-    }
-    return { escape: false };
-  } catch {
-    return { escape: false }; // source not accessible in dry-run, flag as warning
+    if (stat.isSymbolicLink()) return { path: relative, reason: 'symlink or junction detected' };
   }
+  try {
+    const resolved = await realpath(current);
+    const diff = path.relative(rootReal, resolved);
+    if (diff === '..' || diff.startsWith(`..${path.sep}`) || path.isAbsolute(diff)) {
+      return { path: relative, reason: 'path resolves outside source.root' };
+    }
+  } catch (err) {
+    return { path: relative, reason: `path is not accessible: ${err.code ?? err.message}` };
+  }
+  return null;
 }
 
 function integer(value, label, min, max) {
@@ -117,6 +118,15 @@ export async function admitAssignment(manifestPath) {
   if (sourceRoot === rootParsed.root || sourceRoot.length <= 3) {
     return { accepted: false, reason: 'source.root must not be a filesystem root' };
   }
+  let sourceRootReal;
+  try {
+    const rootStat = await lstat(sourceRoot);
+    if (rootStat.isSymbolicLink()) return { accepted: false, reason: 'source.root must not be a symlink or junction' };
+    if (!rootStat.isDirectory()) return { accepted: false, reason: 'source.root must be a directory' };
+    sourceRootReal = await realpath(sourceRoot);
+  } catch (err) {
+    return { accepted: false, reason: `source.root is not accessible: ${err.code ?? err.message}` };
+  }
 
   // Scope
   if (!manifest.scope || typeof manifest.scope !== 'object') {
@@ -153,14 +163,18 @@ export async function admitAssignment(manifestPath) {
     return { accepted: false, reason: 'Scope must include at least one readPath or writePath' };
   }
 
-  // Check for symlink/junction escapes on writePaths and createPaths
-  const escapeErrors = [];
-  for (const p of [...writePaths, ...createPaths]) {
-    const esc = await checkSymlinkEscape(sourceRoot, p);
-    if (esc.escape) escapeErrors.push({ path: p, reason: esc.reason });
+  // Existing reads/writes must exist; only createPaths may name new files.
+  const scopeErrors = [];
+  for (const p of [...readPaths, ...writePaths]) {
+    const error = await checkScopedPath(sourceRootReal, p, false);
+    if (error) scopeErrors.push(error);
   }
-  if (escapeErrors.length > 0) {
-    return { accepted: false, reason: 'Symlink or junction escape detected', escapeErrors };
+  for (const p of createPaths) {
+    const error = await checkScopedPath(sourceRootReal, p, true);
+    if (error) scopeErrors.push(error);
+  }
+  if (scopeErrors.length > 0) {
+    return { accepted: false, reason: 'Scope path is missing, inaccessible, or unsafe', scopeErrors };
   }
 
   // Data policy
@@ -234,7 +248,7 @@ export async function admitAssignment(manifestPath) {
     schemaVersion: SCHEMA_VERSION,
     taskId: manifest.taskId,
     manifestHash: sha256(raw),
-    sourceRoot,
+    sourceRoot: sourceRootReal,
     scope: {
       readPaths: [...new Set(readPaths)].sort(),
       writePaths: [...new Set(writePaths)].sort(),

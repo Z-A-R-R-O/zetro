@@ -1,10 +1,23 @@
 # ZETRO
 
-**Status:** first adapter slice in development · **Owner:** Veyminore
+**Status:** adapter and synthetic RCT pilot in development · **Owner:** Veyminore
 
 ZETRO is a local execution runtime that gives an agent controlled access to a computer, records what it did, and reports what can actually be verified. Its first product is **ZETRO Computer**. The later **ZETRO Orchestration** layer coordinates coding agents and external environments through adapters.
 
 The [Antigravity adapter](docs/ANTIGRAVITY-ADAPTER.md) is the first executable slice. The generic computer runtime and dispatcher remain planned. Other command examples in the plans describe proposed behavior unless explicitly marked implemented.
+
+## Run the current implementation
+
+From this repository root, with Node.js 20+ and pnpm 11.25.0:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm -r test
+pnpm typecheck
+pnpm rct:demo
+```
+
+`rct:demo` is offline and uses a temporary synthetic fixture. `rct:probe` and `rct:live-fixture` require `GROQ_API_KEY`, make network calls, and may consume quota. The live fixture sends only generated public data. See [Quick Start](docs/QUICK-START.md) and the [RCT runtime README](packages/rct-runtime/README.md) for boundaries and exact commands.
 
 ## Read in this order
 

@@ -20,11 +20,19 @@ This document outlines the currently active tools in the ZETRO project, their ex
    Acts as the **adapter and context CLI**. It does *not* orchestrate `orchestration-core` or `workspace-runner` yet.
 
 6. **RCT Runtime** (`packages/rct-runtime`)
-   Runs a one-worker offline coding fixture with a fake provider, explicit file scope, hash-checked replacement, independent checks, bounded usage and metadata journal. Includes a Groq adapter and a synthetic probe, but no verified live connection or live coding CLI yet. See [package README](../packages/rct-runtime/README.md).
+   Runs a one-worker offline coding fixture with a fake provider, explicit file scope, hash-checked replacement, independent checks, bounded usage and metadata journal. It also has an authenticated Groq tool-call probe and a **synthetic-only** live coding fixture. Neither command runs private-source tasks. See [package README](../packages/rct-runtime/README.md).
 
 ## Runnable Commands
 
-Execute these verified commands from the exact paths specified.
+From a clean standalone ZETRO checkout, use Node.js 20+ and pnpm 11.25.0:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm -r test
+pnpm typecheck
+```
+
+From the Veyminore monorepo root, use its own lockfile and run `pnpm install --frozen-lockfile` followed by `pnpm -r test`. Execute the following commands from the paths specified.
 
 **Global / Root Execution:**
 ```bash
@@ -35,8 +43,14 @@ pnpm -r test
 pnpm --dir products/zetro rct:demo
 pnpm --dir products/zetro rct:test
 
+# Dry-run admission of an rct.assignment.v1 JSON manifest; no source edits/network calls
+node products/zetro/packages/rct-runtime/src/cli.js plan <manifest.json>
+
 # Synthetic Groq connectivity probe; no network call without GROQ_API_KEY
 pnpm --dir products/zetro rct:probe
+
+# Synthetic-only live fixture; requires GROQ_API_KEY and consumes provider quota
+pnpm --dir products/zetro rct:live-fixture
 
 # Verify agent-tools capabilities
 node products/zetro/apps/agent-tools/src/cli.js verify-all
@@ -74,4 +88,5 @@ To align with the ZETRO Masterplan and prevent capability overclaim, the followi
 
 * **Diagnostic Status:** The current status SQLite database is a **version-specific diagnostic** tool and must not be treated as a stable API.
 * **Fire-and-Forget Sends:** The system only supports one-shot submissions. There is **no read-back of completed answers via documented agentapi**. 
-* **No Worktree Isolation:** The **repo is not Git**, meaning an **isolated worktree/verified full dispatch is not achieved** yet. Work executes in the shared environment.
+* **No Worktree Isolation:** Veyminore and its ZETRO mirror are Git repositories, but the dispatcher does **not** yet create an isolated worktree or verify full dispatch. Shared-environment tasks should not be treated as isolated.
+* **Admission Is a Preflight, Not Execution:** `plan` validates manifest shape, scoped paths, and budgets without calling a provider or editing source. It does not authorize private-source live coding. The `live-fixture` command uses generated public data only.

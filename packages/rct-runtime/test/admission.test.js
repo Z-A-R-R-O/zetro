@@ -5,10 +5,11 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { admitAssignment } from '../src/admission.js';
 
 const exec = promisify(execFile);
-const cliPath = path.resolve('src/cli.js');
+const cliPath = fileURLToPath(new URL('../src/cli.js', import.meta.url));
 
 let tmpDir;
 let fixtureDir;
@@ -213,10 +214,34 @@ describe('Admission — rejections', () => {
 
   it('rejects filesystem root as source.root', async () => {
     const result = await writeAndAdmit('fs-root', validManifest({
-      source: { root: 'E:\\' }
+      source: { root: path.parse(tmpDir).root }
     }));
     assert.equal(result.accepted, false);
     assert.ok(result.reason.includes('filesystem root'));
+  });
+
+  it('rejects a nonexistent source.root', async () => {
+    const result = await writeAndAdmit('missing-root', validManifest({
+      source: { root: path.join(tmpDir, 'missing-source') }
+    }));
+    assert.equal(result.accepted, false);
+    assert.match(result.reason, /source.root is not accessible/);
+  });
+
+  it('rejects a nonexistent readPath', async () => {
+    const result = await writeAndAdmit('missing-read', validManifest({
+      scope: { readPaths: ['src/missing.js'], writePaths: ['src/main.js'] }
+    }));
+    assert.equal(result.accepted, false);
+    assert.ok(result.scopeErrors?.some(e => e.path === 'src/missing.js' && e.reason.includes('does not exist')));
+  });
+
+  it('rejects a nonexistent writePath unless declared as createPath', async () => {
+    const result = await writeAndAdmit('missing-write', validManifest({
+      scope: { readPaths: ['src/main.js'], writePaths: ['src/missing.js'] }
+    }));
+    assert.equal(result.accepted, false);
+    assert.ok(result.scopeErrors?.some(e => e.path === 'src/missing.js' && e.reason.includes('does not exist')));
   });
 
   it('rejects invalid budget values', async () => {
@@ -275,7 +300,35 @@ describe('Admission — symlink escape', () => {
         checks: [{ type: 'contains', path: 'src/main.js', text: 'greeting' }]
       }));
       assert.equal(result.accepted, false);
-      assert.ok(result.reason.includes('ymlink') || result.reason.includes('junction'));
+      assert.ok(result.scopeErrors?.some(e => e.path === 'src/linked/escape.txt' && /symlink|junction/.test(e.reason)));
+    } finally {
+      await rm(linkDir, { force: true });
+    }
+  });
+
+  it('rejects symlink in readPaths', async () => {
+    const linkDir = path.join(tmpDir, 'source', 'src', 'read-linked');
+    try {
+      await symlink(os.tmpdir(), linkDir, 'junction');
+      const result = await writeAndAdmit('read-symlink-escape', validManifest({
+        scope: { readPaths: ['src/read-linked/secret.txt'], writePaths: ['src/main.js'] }
+      }));
+      assert.equal(result.accepted, false);
+      assert.ok(result.scopeErrors?.some(e => e.path === 'src/read-linked/secret.txt' && /symlink|junction/.test(e.reason)));
+    } finally {
+      await rm(linkDir, { force: true });
+    }
+  });
+
+  it('rejects symlink in createPaths', async () => {
+    const linkDir = path.join(tmpDir, 'source', 'src', 'create-linked');
+    try {
+      await symlink(os.tmpdir(), linkDir, 'junction');
+      const result = await writeAndAdmit('create-symlink-escape', validManifest({
+        scope: { readPaths: ['src/main.js'], writePaths: [], createPaths: ['src/create-linked/new.js'] }
+      }));
+      assert.equal(result.accepted, false);
+      assert.ok(result.scopeErrors?.some(e => e.path === 'src/create-linked/new.js' && /symlink|junction/.test(e.reason)));
     } finally {
       await rm(linkDir, { force: true });
     }

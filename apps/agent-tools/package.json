@@ -4,6 +4,9 @@
   "description": "Agent-facing local CLI wrapper for ZETRO adapter",
   "type": "module",
   "main": "src/index.js",
+  "dependencies": {
+    "@veyminore/zetro-antigravity": "workspace:*"
+  },
   "scripts": {
     "test": "node test/test.js && node test/smoke.test.js"
   }
