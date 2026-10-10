@@ -28,7 +28,11 @@ The first GitHub Actions runs failed during `pnpm -r test` on Ubuntu, after froz
 
 Authenticated logs from the next Ubuntu run confirmed RCT 50/50 and adapter 7/8. The sole observed failure was the CLI smoke test expecting exit code 0 from `status --json`; the command correctly returned 2 because the CI runner has no live Antigravity connection. The smoke test now accepts the documented success/failure exit semantics and checks that the exit code agrees with the JSON connection states. A separate `--help` smoke test verifies an always-offline CLI path. Live identity checks in the adapter's injected-dependency tests remain unchanged.
 
-The `agent-tools` integration smoke test had the same latent assumption: `status-compact` returns JSON but exits 1 when any Antigravity connection is unavailable. Its subprocess test now parses JSON even on that expected nonzero exit and checks that the exit code agrees with the reported connection states. `send-packed --dry-run` remains offline and must exit 0. Local monorepo and ZETRO-root recursive tests passed after these corrections (RCT 50/50, adapter 9/9). A ZETRO-root test run also passed while pointing the sidecar connection at an intentionally unavailable loopback endpoint, exercising the disconnected path. A fresh Linux Actions run is still required to confirm CI is green.
+The `agent-tools` integration smoke test had the same latent assumption: `status-compact` returns JSON but exits 1 when any Antigravity connection is unavailable. Its subprocess test now parses JSON even on that expected nonzero exit and checks that the exit code agrees with the reported connection states. `send-packed --dry-run` remains offline and must exit 0. Local monorepo and ZETRO-root recursive tests passed after these corrections (RCT 50/50, adapter 9/9). A ZETRO-root test run also passed while pointing the sidecar connection at an intentionally unavailable loopback endpoint, exercising the disconnected path.
+
+## Final Linux CI verification
+
+Both Ubuntu workflows completed successfully on the final code changes: [Veyminore run 38028310590](https://github.com/Z-A-R-R-O/Veyminore/actions/runs/38028310590) at `1dcee7b` and [ZETRO run 38028331267](https://github.com/Z-A-R-R-O/zetro/actions/runs/38028331267) at `8bf48b5`. Each workflow ran a frozen pnpm install, recursive tests, and adapter typecheck without a Groq key or live Antigravity connection.
 
 ## Capability boundary
 
