@@ -119,12 +119,20 @@ test('observe uses discovery cache and diagnostic fallback', async () => {
 
 const cliPath = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
 
-test('CLI smoke test for status JSON', () => {
-  const result = spawnSync(process.execPath, [cliPath, 'status', '--json'], { encoding: 'utf8' });
+test('CLI help works without a live Antigravity connection', () => {
+  const result = spawnSync(process.execPath, [cliPath, '--help'], { encoding: 'utf8' });
   assert.equal(result.status, 0);
-  const data = JSON.parse(result.stdout);
+  assert.match(result.stdout, /ZETRO Antigravity adapter/);
+  assert.match(result.stdout, /zetro-ag status/);
+});
+
+test('CLI status JSON reports honest connection state', () => {
+  const result = spawnSync(process.execPath, [cliPath, 'status', '--json'], { encoding: 'utf8' });
+  assert.ok(result.status === 0 || result.status === 2, result.stderr);
+  const data: Array<{ agent: string; connected: boolean; state: string; stepCount: number; confidence: string }> = JSON.parse(result.stdout);
   assert.equal(Array.isArray(data), true);
   assert.equal(data.length, 5);
+  assert.equal(result.status, data.every((row) => row.connected) ? 0 : 2);
   for (const row of data) {
     assert.equal(typeof row.agent, 'string');
     assert.ok(['idle', 'running', 'unknown'].includes(row.state));

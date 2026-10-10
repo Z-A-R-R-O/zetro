@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import os from 'node:os';
@@ -8,25 +8,19 @@ import fs from 'node:fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cliPath = path.join(__dirname, '../src/cli.js');
 
-function runCli(args, expectFail = false) {
-    try {
-        const out = execSync(`node "${cliPath}" ${args}`, { encoding: 'utf8' }).trim();
-        if (expectFail) assert.fail('Expected command to exit with non-zero code');
-        return JSON.parse(out);
-    } catch (err) {
-        if (!expectFail) {
-            console.error('Command failed unexpectedly', err.stdout, err.stderr);
-            assert.fail('Command failed: ' + args);
-        }
-        try { return JSON.parse(err.stdout.trim()); } catch (e) { return err.stdout.trim(); }
-    }
+function runCli(args) {
+    const result = spawnSync(process.execPath, [cliPath, ...args], { encoding: 'utf8' });
+    assert.ifError(result.error);
+    assert.ok(result.status === 0 || result.status === 1, result.stderr);
+    return { exitCode: result.status, output: JSON.parse(result.stdout) };
 }
 
 try {
     console.log('Running integration tests...');
     
-    const sCompact = runCli('status-compact');
+    const { exitCode: statusExitCode, output: sCompact } = runCli(['status-compact']);
     assert.strictEqual(sCompact.status, 'success');
+    assert.strictEqual(statusExitCode, sCompact.data.some(d => d.connected === false) ? 1 : 0);
     if (sCompact.data.length > 0) {
         assert.strictEqual(sCompact.data[0].workspace, undefined);
     }
@@ -43,7 +37,10 @@ try {
     }));
     const storeDir = path.join(tmpDir, 'store');
 
-    const sPackRes = runCli(`send-packed AGR-1 --input "${taskJson}" --store "${storeDir}" --budget 2000 --dry-run`);
+    const { exitCode: packExitCode, output: sPackRes } = runCli([
+        'send-packed', 'AGR-1', '--input', taskJson, '--store', storeDir, '--budget', '2000', '--dry-run'
+    ]);
+    assert.strictEqual(packExitCode, 0);
     assert.strictEqual(sPackRes.status, 'not_attempted');
     assert.ok(sPackRes.metrics.savedChars > 300);
 
