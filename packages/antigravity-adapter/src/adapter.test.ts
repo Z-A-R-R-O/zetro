@@ -1,7 +1,7 @@
 ﻿import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AntigravityAdapter, type AdapterDependencies } from './adapter.js';
 import { AGENT_NAMES, type AgentConfig } from './config.js';
 import type { Endpoint } from './discovery.js';
@@ -10,7 +10,7 @@ import type { AgentApiResponse } from './agentapi.js';
 const config: AgentConfig = {
   schemaVersion: '1',
   projectId: 'project-1',
-  workspace: 'E:\\Veyminore',
+  workspace: process.platform === 'win32' ? 'E:\\Veyminore' : '/tmp/veyminore-test',
   agents: {
     'AGR-1': 'f4881509-063a-4690-b5c4-985fd16cb39f',
     'AGR-2': 'c7325399-fa02-4a1f-8417-9260a1d8c38a',
@@ -22,7 +22,7 @@ const config: AgentConfig = {
 
 const endpoint: Endpoint = { address: '127.0.0.1:5000', csrfToken: 'test-token', source: 'windows-process' };
 
-function metadata(id: string, projectId = config.projectId, workspace = 'file:///e:/Veyminore'): AgentApiResponse {
+function metadata(id: string, projectId = config.projectId, workspace = pathToFileURL(config.workspace).href): AgentApiResponse {
   return { response: { conversationMetadata: { metadata: {
     rootConversationId: id,
     projectId,

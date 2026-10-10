@@ -20,7 +20,11 @@ On Windows with Node.js and pnpm 11.25.0:
 | ZETRO standalone temporary copy | `pnpm -r test` | Passed, including RCT 50/50 and adapter 8/8 |
 | ZETRO standalone temporary copy | `pnpm typecheck` | Passed |
 
-The standalone copy excluded the parent repository, `node_modules`, and generated `dist` output. It tested source layout equivalent to a fresh ZETRO clone. The GitHub Actions workflows themselves have not yet run; they become active after these changes are published.
+The standalone copy excluded the parent repository, `node_modules`, and generated `dist` output. It tested source layout equivalent to a fresh ZETRO clone.
+
+## Initial Linux CI run
+
+The first GitHub Actions runs failed during `pnpm -r test` on Ubuntu, after frozen installation succeeded. The adapter test fixture hardcoded a Windows workspace path (`E:\\Veyminore`) and Windows file URI (`file:///e:/Veyminore`). Those are not a valid matching native path/URI pair under Linux's `fileURLToPath`, so the mock identity checks were platform-dependent. The fixture now uses a platform-native path and `pathToFileURL` to generate its URI. Local monorepo and ZETRO-root recursive tests passed after this correction. A new Linux Actions run is required to confirm CI is green; Linux was not available locally for execution.
 
 ## Capability boundary
 
