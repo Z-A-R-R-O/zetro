@@ -1,0 +1,11 @@
+{
+  "name": "@veyminore/antigravity-bridge-sidecar",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test/test.js",
+    "benchmark": "node scripts/benchmark.js",
+    "readiness": "node scripts/readiness.js"
+  }
+}

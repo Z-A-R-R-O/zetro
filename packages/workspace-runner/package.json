@@ -1,0 +1,11 @@
+{
+  "name": "@zetro/workspace-runner",
+  "version": "1.0.0",
+  "description": "Safe verifier for delegated coding work",
+  "main": "src/verifier.js",
+  "scripts": {
+    "test": "node test/verifier.test.js"
+  },
+  "author": "AGR-4",
+  "license": "UNLICENSED"
+}

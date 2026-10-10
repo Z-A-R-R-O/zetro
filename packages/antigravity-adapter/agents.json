@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1",
+  "projectId": "9ab65b57-6580-4788-b50a-28886bc68496",
+  "workspace": "E:\\Veyminore",
+  "agents": {
+    "AGR-1": "f4881509-063a-4690-b5c4-985fd16cb39f",
+    "AGR-2": "c7325399-fa02-4a1f-8417-9260a1d8c38a",
+    "AGR-3": "20d3f993-477e-4eb2-a785-40b391bd091e",
+    "AGR-4": "339c97a8-901b-4ee8-a3c4-8bd311e3de8c",
+    "AGR-5": "af8ce409-7904-41c5-9505-18e2145d3dfd"
+  }
+}

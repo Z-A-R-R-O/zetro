@@ -1,0 +1,7 @@
+{
+  "name": "zetro",
+  "type": "product",
+  "status": "active",
+  "owner": "veyminore",
+  "stack": ["typescript", "nodejs"]
+}

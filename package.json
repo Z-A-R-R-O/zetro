@@ -1,0 +1,15 @@
+{
+  "name": "@veyminore/zetro",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "agents": "node packages/antigravity-adapter/dist/cli.js",
+    "rct:demo": "node packages/rct-runtime/src/cli.js demo",
+    "rct:probe": "node packages/rct-runtime/src/cli.js probe",
+    "rct:live-fixture": "node packages/rct-runtime/src/cli.js live-fixture",
+    "rct:test": "node --test packages/rct-runtime/test/*.test.js",
+    "build": "pnpm --filter @veyminore/zetro-antigravity build",
+    "test": "pnpm --filter @veyminore/zetro-antigravity test",
+    "typecheck": "pnpm --filter @veyminore/zetro-antigravity typecheck"
+  }
+}

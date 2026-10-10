@@ -1,0 +1,9 @@
+{
+  "name": "@zetro/orchestration-core",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

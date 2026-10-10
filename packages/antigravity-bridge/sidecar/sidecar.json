@@ -1,0 +1,6 @@
+{
+  "description": "AGR-1 identity verification and persistent local inbox task submission",
+  "command": "node",
+  "args": ["src/main.js"],
+  "restart_policy": "always"
+}

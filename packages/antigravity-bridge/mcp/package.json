@@ -1,0 +1,19 @@
+{
+  "name": "@zetro/antigravity-bridge-mcp",
+  "version": "1.0.0",
+  "description": "Narrow worker-return channel core for future MCP",
+  "main": "src/index.js",
+  "bin": {
+    "mcp-server": "./src/server.js",
+    "mcp-coordinator": "./src/coordinator.js",
+    "mcp-validate-config": "./src/validate_config.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "author": "AGR-3",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1"
+  }
+}

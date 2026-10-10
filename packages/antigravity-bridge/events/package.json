@@ -1,0 +1,8 @@
+{
+  "name": "@zetro/antigravity-bridge-events",
+  "version": "1.0.0",
+  "main": "src/journal.js",
+  "scripts": {
+    "test": "node test/journal.test.js && node test/integration.test.js && node test/coordinator.test.js"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "zetro": {
+      "command": "node",
+      "args": [
+        "E:\\Veyminore\\products\\zetro\\packages\\antigravity-bridge\\mcp\\src\\server.js"
+      ],
+      "env": {
+        "MCP_STORAGE_DIR": "C:\\Users\\SUNDAR\\AppData\\Local\\Zetro\\bridge\\mcp",
+        "MCP_MAX_BUDGET": "50000"
+      }
+    }
+  }
+}

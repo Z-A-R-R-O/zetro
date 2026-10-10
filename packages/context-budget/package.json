@@ -1,0 +1,14 @@
+{
+  "name": "@zetro/context-budget",
+  "version": "1.0.0",
+  "description": "Zero-dependency context packet engine for AGR tokens reduction",
+  "main": "src/index.js",
+  "bin": {
+    "context-budget": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "author": "AGR-3",
+  "license": "UNLICENSED"
+}
