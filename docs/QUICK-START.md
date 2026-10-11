@@ -20,7 +20,7 @@ This document outlines the currently active tools in the ZETRO project, their ex
    Acts as the **adapter and context CLI**. It does *not* orchestrate `orchestration-core` or `workspace-runner` yet.
 
 6. **RCT Runtime** (`packages/rct-runtime`)
-   Runs a one-worker offline coding fixture with a fake provider, explicit file scope, hash-checked replacement, independent checks, bounded usage and metadata journal. It also has an authenticated Groq tool-call probe and a **synthetic-only** live coding fixture. Neither command runs private-source tasks. See [package README](../packages/rct-runtime/README.md).
+   Runs a one-worker offline coding fixture with a fake provider, explicit file scope, hash-checked replacement, independent checks, bounded usage and metadata journal. It also has an authenticated Groq tool-call probe, a **synthetic-only** live coding fixture, and a gated single-file live pilot command (`run-live`). Initial live trial attempts (2026-10-11) failed on `read_slice` with source unchanged; the contract repair has passed offline tests but has not been live-retested. See [package README](../packages/rct-runtime/README.md) and [live pilot verification](verification/2026-10-11-rct-live-pilot.md).
 
 ## Runnable Commands
 
@@ -45,6 +45,12 @@ pnpm --dir products/zetro rct:test
 
 # Dry-run admission of an rct.assignment.v1 JSON manifest; no source edits/network calls
 node products/zetro/packages/rct-runtime/src/cli.js plan <manifest.json>
+
+# Execute an admitted manifest offline via deterministic fake-provider (no autonomous coding, no source mutation)
+node products/zetro/packages/rct-runtime/src/cli.js run-offline <manifest.json>
+
+# Gated live pilot against exactly one existing file (requires GROQ_API_KEY, strict limits, and expected SHA-256; trial failed at turn 0 on read_slice, source unchanged, offline repair not yet live-retested)
+node products/zetro/packages/rct-runtime/src/cli.js run-live <manifest.json> --approve <manifestHash>
 
 # Synthetic Groq connectivity probe; no network call without GROQ_API_KEY
 pnpm --dir products/zetro rct:probe
@@ -89,4 +95,4 @@ To align with the ZETRO Masterplan and prevent capability overclaim, the followi
 * **Diagnostic Status:** The current status SQLite database is a **version-specific diagnostic** tool and must not be treated as a stable API.
 * **Fire-and-Forget Sends:** The system only supports one-shot submissions. There is **no read-back of completed answers via documented agentapi**. 
 * **No Worktree Isolation:** Veyminore and its ZETRO mirror are Git repositories, but the dispatcher does **not** yet create an isolated worktree or verify full dispatch. Shared-environment tasks should not be treated as isolated.
-* **Admission Is a Preflight, Not Execution:** `plan` validates manifest shape, scoped paths, and budgets without calling a provider or editing source. It does not authorize private-source live coding. The `live-fixture` command uses generated public data only.
+* **Admission Is a Preflight, Not Execution:** `plan` validates manifest shape, scoped paths, and budgets without calling a provider or editing source. It does not authorize private-source live coding. The `live-fixture` command uses generated public data only. The `run-offline` command strictly executes in a deterministic fake-provider environment (driven by mock `_fakeSteps` in the manifest) and creates a private snapshot to safely compute a reviewable diff artifact without modifying the original source tree. The `run-live` pilot is heavily gated, requires `source.expectedSha256` matching, restricts to a single file, and makes no production claim until the real live trial has taken place.

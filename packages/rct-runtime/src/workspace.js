@@ -16,7 +16,15 @@ export class ScopedWorkspace {
   constructor(root, allowedPaths, limits = {}) {
     if (!path.isAbsolute(root)) throw new Error('Workspace root must be absolute');
     this.root = path.resolve(root);
-    this.allowed = new Set(allowedPaths.map(cleanRelative));
+
+    if (Array.isArray(allowedPaths)) {
+      this.allowed = new Set(allowedPaths.map(cleanRelative));
+      this.writePaths = new Set(this.allowed);
+    } else {
+      this.allowed = new Set([...(allowedPaths.readPaths || []), ...(allowedPaths.writePaths || [])].map(cleanRelative));
+      this.writePaths = new Set((allowedPaths.writePaths || []).map(cleanRelative));
+    }
+
     if (!this.allowed.size) throw new Error('At least one allowed file is required');
     this.maxReadBytes = limits.maxReadBytes ?? 8192;
     this.maxWriteBytes = limits.maxWriteBytes ?? 8192;
@@ -25,9 +33,10 @@ export class ScopedWorkspace {
     this.writeBytes = 0;
   }
 
-  async resolveFile(relative) {
+  async resolveFile(relative, write = false) {
     const name = cleanRelative(relative);
     if (!this.allowed.has(name)) throw new Error('Path outside assignment scope');
+    if (write && !this.writePaths.has(name)) throw new Error('Path not in write scope');
     const rootReal = await realpath(this.root);
     let current = rootReal;
     for (const segment of name.split('/')) {
@@ -50,8 +59,26 @@ export class ScopedWorkspace {
     return found;
   }
 
-  async readSlice(relative, start = 0, length = 2048) {
-    if (!Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(length) || length < 1 || length > 4096) throw new Error('Invalid slice');
+  async readSlice(relative, rawStart = 0, rawLength = 2048) {
+    let start = rawStart;
+    if (start === undefined || start === null || start === '') {
+      start = 0;
+    } else if (typeof start === 'string' && /^\s*-?\d+\s*$/.test(start)) {
+      start = Number(start.trim());
+    }
+
+    let length = rawLength;
+    if (length === undefined || length === null || length === '') {
+      length = 2048;
+    } else if (typeof length === 'string' && /^\s*-?\d+\s*$/.test(length)) {
+      length = Number(length.trim());
+    }
+
+    if (!Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(length) || length < 1) {
+      throw new Error('Invalid slice');
+    }
+
+    length = Math.min(length, 4096);
     const file = await this.resolveFile(relative);
     const bytes = await readFile(file);
     if (bytes.length > 65536) throw new Error('File exceeds pilot size limit');
@@ -88,13 +115,13 @@ export class ScopedWorkspace {
     if (typeof content !== 'string' || typeof expectedSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(expectedSha256)) throw new Error('Invalid patch');
     const bytes = Buffer.from(content, 'utf8');
     if (bytes.length > 65536 || this.writeBytes + bytes.length > this.maxWriteBytes) throw new Error('Write budget exhausted');
-    const file = await this.resolveFile(relative);
+    const file = await this.resolveFile(relative, true);
     const before = await readFile(file);
     if (sha256(before) !== expectedSha256) throw new Error('Stale preimage');
     if (before.equals(bytes)) return { path: cleanRelative(relative), before: expectedSha256, after: expectedSha256, bytes: bytes.length, applied: false, reason: 'no_change' };
     // Recheck the path before writing. The pilot only runs in a private snapshot;
     // hostile concurrent filesystem mutation is not a supported security boundary.
-    if (await this.resolveFile(relative) !== file) throw new Error('Path changed');
+    if (await this.resolveFile(relative, true) !== file) throw new Error('Path changed');
     await writeFile(file, bytes, { flag: 'w' });
     this.writeBytes += bytes.length;
     return { path: cleanRelative(relative), before: expectedSha256, after: sha256(bytes), bytes: bytes.length, applied: true };

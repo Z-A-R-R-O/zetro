@@ -9,7 +9,7 @@ const SUPPORTED_CHECK_PROFILES = ['equals', 'contains'];
 const SUPPORTED_DATA_CLASSIFICATIONS = ['public', 'internal', 'sensitive'];
 
 function sha256(value) {
-  return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
+  return createHash('sha256').update(Buffer.isBuffer(value) ? value : (typeof value === 'string' ? value : JSON.stringify(value))).digest('hex');
 }
 
 function rejectIf(condition, reason, details = {}) {
@@ -210,6 +210,9 @@ export async function admitAssignment(manifestPath) {
     if (typeof check.text !== 'string' || check.text.length > 4096) {
       return { accepted: false, reason: 'Check text must be a string under 4096 chars' };
     }
+    if (check.type === 'contains' && check.text.length === 0) {
+      return { accepted: false, reason: 'Check text for contains must not be empty' };
+    }
     const pathResult = validateRelativePath(check.path);
     if (!pathResult.ok) {
       return { accepted: false, reason: `Invalid check path: ${pathResult.reason}` };
@@ -243,6 +246,17 @@ export async function admitAssignment(manifestPath) {
   }
 
   // All validations passed — produce the dry-run plan
+  const sourceHashes = {};
+  for (const p of [...new Set([...readPaths, ...writePaths])]) {
+    try {
+      const file = path.join(sourceRootReal, p);
+      const bytes = await readFile(file);
+      sourceHashes[p] = sha256(bytes);
+    } catch (e) {
+      return { accepted: false, reason: `Failed to read file ${p} for hashing: ${e.message}` };
+    }
+  }
+
   const plan = {
     accepted: true,
     schemaVersion: SCHEMA_VERSION,
@@ -252,7 +266,8 @@ export async function admitAssignment(manifestPath) {
     scope: {
       readPaths: [...new Set(readPaths)].sort(),
       writePaths: [...new Set(writePaths)].sort(),
-      createPaths: [...new Set(createPaths)].sort()
+      createPaths: [...new Set(createPaths)].sort(),
+      sourceHashes
     },
     checkProfiles,
     dataPolicy: {
@@ -275,5 +290,6 @@ export async function admitAssignment(manifestPath) {
     sourceEdited: false
   };
 
+  Object.defineProperty(plan, '_rawManifest', { value: manifest, enumerable: false });
   return plan;
 }

@@ -347,6 +347,7 @@ describe('CLI plan command', () => {
     assert.equal(result.dryRun, true);
     assert.equal(result.networkCallsMade, 0);
     assert.equal(result.sourceEdited, false);
+    assert.strictEqual(result._rawManifest, undefined, '_rawManifest should not be serialized');
   });
 
   it('exits non-zero for rejected manifest via CLI', async () => {

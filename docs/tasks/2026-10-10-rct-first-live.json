@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "rct.assignment.v1",
+  "taskId": "2026-10-10-rct-first-live",
+  "objective": "Add one new row to the documentation map for `[RCT runtime](../packages/rct-runtime/README.md)`, accurately describing the runnable one-worker pilot, private snapshot and review artifact, and an `Update when` trigger for worker/runtime changes. Preserve all existing rows and change-control text. Make no claims of five-worker readiness or auto-merge.",
+  "acceptance": [
+    "Must add new row to documentation map",
+    "Must include exact string `[RCT runtime](../packages/rct-runtime/README.md)`",
+    "Must include exact string `private snapshot`",
+    "Must accurately describe the runnable one-worker pilot and review artifact",
+    "Must include an 'Update when' trigger for worker/runtime changes",
+    "Must preserve all existing rows and change-control text"
+  ],
+  "source": {
+    "root": "E:\\Veyminore\\products\\zetro",
+    "expectedSha256": "da33cb0dff40cc6276d4acad95c811e136b8d88d9c2dfc9d29ec9ba0777ae234"
+  },
+  "scope": {
+    "readPaths": [
+      "docs/README.md"
+    ],
+    "writePaths": [
+      "docs/README.md"
+    ],
+    "createPaths": []
+  },
+  "dataPolicy": {
+    "classification": "internal",
+    "allowRemoteInference": true,
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b"
+  },
+  "checks": [
+    {
+      "type": "contains",
+      "path": "docs/README.md",
+      "text": "[RCT runtime](../packages/rct-runtime/README.md)"
+    },
+    {
+      "type": "contains",
+      "path": "docs/README.md",
+      "text": "private snapshot"
+    }
+  ],
+  "budget": {
+    "maxTurns": 5,
+    "maxInputTokens": 5000,
+    "maxOutputTokens": 2000,
+    "maxPromptChars": 12000,
+    "maxReadBytes": 6000,
+    "maxWriteBytes": 6000,
+    "maxWallMs": 120000
+  }
+}

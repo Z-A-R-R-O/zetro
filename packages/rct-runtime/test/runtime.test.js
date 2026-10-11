@@ -107,6 +107,42 @@ test('stale preimage fails without modifying the file', () => fixture(async root
   assert.equal(await readFile(path.join(root, 'src', 'greeting.txt'), 'utf8'), 'hello\n');
 }));
 
+test('readSlice contract handles optional/null/coercible fields and rejects invalid numeric values', () => fixture(async root => {
+  const workspace = new ScopedWorkspace(root, ['src/greeting.txt']);
+
+  // Valid omitted start & length
+  const defaultRead = await workspace.readSlice('src/greeting.txt');
+  assert.equal(defaultRead.start, 0);
+  assert.equal(defaultRead.content, 'hello\n');
+
+  // Valid null start & length
+  const nullRead = await workspace.readSlice('src/greeting.txt', null, null);
+  assert.equal(nullRead.start, 0);
+  assert.equal(nullRead.content, 'hello\n');
+
+  // Valid string coercion
+  const strRead = await workspace.readSlice('src/greeting.txt', '0', '100');
+  assert.equal(strRead.start, 0);
+  assert.equal(strRead.content, 'hello\n');
+
+  // Oversized length clamped to 4096
+  const oversizedRead = await workspace.readSlice('src/greeting.txt', 0, 10000);
+  assert.equal(oversizedRead.start, 0);
+  assert.equal(oversizedRead.end, 6);
+  assert.equal(oversizedRead.content, 'hello\n');
+
+  // Negative invalid-slice tests
+  await assert.rejects(workspace.readSlice('src/greeting.txt', -1, 100), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 0, 0), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 0, -10), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 'bad', 100), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 0, 'bad'), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', NaN, 100), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 0, NaN), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 1.5, 100), /Invalid slice/);
+  await assert.rejects(workspace.readSlice('src/greeting.txt', 0, 1.5), /Invalid slice/);
+}));
+
 test('out-of-scope and traversal paths are denied', () => fixture(async root => {
   const workspace = new ScopedWorkspace(root, ['src/greeting.txt']);
   await assert.rejects(workspace.readSlice('../secret.txt'));

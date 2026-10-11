@@ -13,8 +13,20 @@ export function validateAssignment(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Assignment must be an object');
   if (typeof value.objective !== 'string' || value.objective.length < 3 || value.objective.length > 2000) throw new Error('Invalid objective');
   if (typeof value.acceptance !== 'string' || value.acceptance.length < 3 || value.acceptance.length > 2000) throw new Error('Invalid acceptance');
-  if (!Array.isArray(value.allowedPaths) || value.allowedPaths.length < 1 || value.allowedPaths.length > 20) throw new Error('Invalid allowedPaths');
-  const allowedPaths = [...new Set(value.allowedPaths.map(cleanRelative))];
+  let allowedPathsFlat = [];
+  if (Array.isArray(value.allowedPaths)) {
+    if (value.allowedPaths.length < 1 || value.allowedPaths.length > 20) throw new Error('Invalid allowedPaths');
+    allowedPathsFlat = value.allowedPaths;
+  } else if (value.allowedPaths && typeof value.allowedPaths === 'object') {
+    const { readPaths, writePaths } = value.allowedPaths;
+    if (!Array.isArray(readPaths) || !Array.isArray(writePaths)) throw new Error('Invalid allowedPaths');
+    allowedPathsFlat = [...readPaths, ...writePaths];
+    if (allowedPathsFlat.length < 1 || allowedPathsFlat.length > 20) throw new Error('Invalid allowedPaths');
+  } else {
+    throw new Error('Invalid allowedPaths');
+  }
+  const allowedPaths = [...new Set(allowedPathsFlat.map(cleanRelative))];
+  value.allowedPathsObj = value.allowedPaths;
   if (!Array.isArray(value.checks) || !value.checks.length || value.checks.length > 20) throw new Error('At least one independent check is required');
   const checks = value.checks.map(check => {
     if (!check || !['equals', 'contains'].includes(check.type) || typeof check.text !== 'string' || check.text.length > 4096) throw new Error('Invalid check');
@@ -28,6 +40,7 @@ export function validateAssignment(value) {
     objective: value.objective,
     acceptance: value.acceptance,
     allowedPaths,
+    allowedPathsObj: value.allowedPathsObj,
     checks,
     budget: {
       maxTurns: integer(budget.maxTurns ?? 6, 'maxTurns', 1, 20),
@@ -52,11 +65,19 @@ async function verify(workspace, checks) {
   return results;
 }
 
+/**
+ * Executes a worker loop against a provided workspace.
+ * WARNING: The options.isolated = true flag is caller-asserted. This function
+ * does not enforce or prove that isolatedRoot is truly a private snapshot.
+ * Callers (like the CLI orchestrator) MUST ensure they pass a safely snapshotted
+ * private directory, never the original source root.
+ */
 export async function runAssignment(rawAssignment, provider, isolatedRoot, options = {}) {
   const assignment = validateAssignment(rawAssignment);
   if (!provider || typeof provider.next !== 'function') throw new Error('Provider must implement next');
   if (options.isolated !== true) throw new Error('Explicit isolated workspace confirmation required');
-  const workspace = new ScopedWorkspace(isolatedRoot, assignment.allowedPaths, assignment.budget);
+  const workspace = new ScopedWorkspace(isolatedRoot, assignment.allowedPathsObj || assignment.allowedPaths, assignment.budget);
+  const hasValidPatch = () => patches.some(p => p.applied && p.before !== p.after && assignment.checks.some(c => c.path === p.path));
   const start = Date.now();
   const events = [];
   const patches = [];
@@ -84,7 +105,8 @@ export async function runAssignment(rawAssignment, provider, isolatedRoot, optio
     let response;
     try {
       usage.requests++;
-      response = await provider.next({ messages: structuredClone(messages), tools: toolNames, maxOutputTokens: Math.min(remainingOutput, 1024), timeoutMs: Math.max(1, assignment.budget.maxWallMs - (Date.now() - start)) });
+      const requestMaxOutputTokens = options.requestMaxOutputTokens ?? 1024;
+      response = await provider.next({ messages: structuredClone(messages), tools: toolNames, maxOutputTokens: Math.min(remainingOutput, requestMaxOutputTokens), timeoutMs: Math.max(1, assignment.budget.maxWallMs - (Date.now() - start)) });
       if (!response || !Array.isArray(response.toolCalls) || response.toolCalls.length !== 1 || !response.usage) throw new Error('Malformed provider response');
       usage.inputTokens += integer(response.usage.inputTokens, 'provider input usage', 0, 1000000);
       usage.outputTokens += integer(response.usage.outputTokens, 'provider output usage', 0, 1000000);
@@ -102,7 +124,7 @@ export async function runAssignment(rawAssignment, provider, isolatedRoot, optio
           else repeatedNoops++;
           checks = await verify(workspace, assignment.checks);
           result = { ...patch, checks };
-          if (options.autoFinalizeOnChecks === true && patches.length > 0 && assignment.checks.every(x => x.type === 'equals') && checks.every(x => x.passed)) {
+          if (options.autoFinalizeOnChecks === true && hasValidPatch() && assignment.checks.every(x => x.type === 'equals') && checks.every(x => x.passed)) {
             state = 'worker_reported';
             completionSource = 'independent_checks';
           }
@@ -115,7 +137,7 @@ export async function runAssignment(rawAssignment, provider, isolatedRoot, optio
         case 'run_check': checks = await verify(workspace, assignment.checks); result = { checks }; break;
         case 'submit_receipt':
           checks = await verify(workspace, assignment.checks);
-          result = { submitted: patches.length > 0 && checks.every(x => x.passed), checks };
+          result = { submitted: hasValidPatch() && checks.every(x => x.passed), checks };
           if (result.submitted) {
             workerSummary = typeof call.args.summary === 'string' ? call.args.summary.slice(0, 1000) : '';
             state = 'worker_reported';
@@ -131,13 +153,17 @@ export async function runAssignment(rawAssignment, provider, isolatedRoot, optio
       events.push({ turn, tool: response?.toolCalls?.[0]?.name ?? 'provider', ok: false, error: error.message, ...(error.networkCodes ? { networkCodes: error.networkCodes, transportAttempts: error.attempts } : {}) });
       if (journal) await journal.append({ taskId: assignment.id, kind: 'tool', turn, tool: response?.toolCalls?.[0]?.name ?? 'provider', ok: false, errorType: error.name });
       state = ['AbortError', 'TimeoutError', 'ProviderTransportError'].includes(error.name) ? 'unknown' : 'failed';
+      if (!failureReason) failureReason = state === 'unknown' ? 'transport_error' : 'worker_or_tool_error';
     }
   }
-  if (state === 'running') state = 'budget_exhausted';
+  if (state === 'running') {
+    state = 'budget_exhausted';
+    if (!failureReason) failureReason = 'budget_exhausted';
+  }
   if (state === 'worker_reported') {
     try {
       checks = await verify(workspace, assignment.checks);
-      state = patches.length && checks.every(x => x.passed) ? 'review_ready' : 'failed';
+      state = hasValidPatch() && checks.every(x => x.passed) ? 'review_ready' : 'failed';
     } catch (error) {
       events.push({ tool: 'verify', ok: false, error: error.message });
       state = 'failed';

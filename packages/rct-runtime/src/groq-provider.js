@@ -26,7 +26,7 @@ const tool = (name, description, properties, required = []) => ({
 const TOOL_SCHEMAS = {
   list_paths: tool('list_paths', 'List only the files permitted by this assignment.', {}),
   search: tool('search', 'Find a literal term in allowed files; returns bounded offsets.', { term: { type: 'string' } }, ['term']),
-  read_slice: tool('read_slice', 'Read a bounded byte slice from an allowed file.', { path: { type: 'string' }, start: { type: 'integer' }, length: { type: 'integer' } }, ['path']),
+  read_slice: tool('read_slice', 'Read a bounded byte slice from an allowed file (at most 4096 bytes per call).', { path: { type: 'string', description: 'Path to an allowed file.' }, start: { type: 'integer', minimum: 0, description: 'Starting byte offset (default 0).' }, length: { type: 'integer', minimum: 1, maximum: 4096, description: 'Number of bytes to read (default 2048, maximum 4096).' } }, ['path']),
   propose_patch: tool('propose_patch', 'Replace one allowed file in the isolated snapshot only when its SHA-256 preimage matches.', { path: { type: 'string' }, expectedSha256: { type: 'string' }, content: { type: 'string' } }, ['path', 'expectedSha256', 'content']),
   run_check: tool('run_check', 'Run the fixed independent acceptance checks on the isolated snapshot.', {}),
   submit_receipt: tool('submit_receipt', 'Finish the attempt with a concise work summary. Independent checks determine the result.', { summary: { type: 'string' } }, ['summary'])
@@ -118,9 +118,17 @@ export class GroqProvider {
 }
 
 function httpError(response) {
-  const error = new Error(response.status === 429 ? 'Groq rate limit reached' : `Groq HTTP ${response.status}`);
-  error.name = response.status === 429 ? 'RateLimitError' : 'ProviderError';
+  let name = 'ProviderError';
+  if (response.status === 429) name = 'RateLimitError';
+  else if (response.status >= 500 && response.status < 600) name = 'ProviderTransportError';
+
+  const error = new Error(name === 'RateLimitError' ? 'Groq rate limit reached' : `Groq HTTP ${response.status}`);
+  error.name = name;
   error.status = response.status;
+  if (name === 'ProviderTransportError') {
+    error.attempts = 1;
+    error.networkCodes = [`HTTP_${response.status}`];
+  }
   error.retryAfter = response.headers?.get?.('retry-after') ?? null;
   return error;
 }
