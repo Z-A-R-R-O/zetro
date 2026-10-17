@@ -15,7 +15,6 @@ The [Antigravity adapter](docs/ANTIGRAVITY-ADAPTER.md) is the first executable s
 
 The documentation deliberately separates implemented functionality from proposed behavior. Start with the [Quick Start](docs/QUICK-START.md) and [Evidence and Quality](docs/EVIDENCE-AND-QUALITY.md) guides when evaluating the current implementation.
 
-
 ## Run the current implementation
 
 From this repository root, with Node.js 20+ and pnpm 11.25.0:
