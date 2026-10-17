@@ -6,6 +6,15 @@ ZETRO is a local execution runtime that gives an agent controlled access to a co
 
 The [Antigravity adapter](docs/ANTIGRAVITY-ADAPTER.md) is the first executable slice. The generic computer runtime and dispatcher remain planned. Other command examples in the plans describe proposed behavior unless explicitly marked implemented.
 
+## Engineering snapshot
+
+- **Runtime:** Node.js 20+ with pnpm workspace tooling.
+- **Executable slice:** the Antigravity adapter and an offline synthetic RCT demo.
+- **Verification commands:** `pnpm -r test`, `pnpm typecheck`, and `pnpm rct:demo`.
+- **Development status:** adapter and synthetic RCT pilot in development; the generic computer runtime and dispatcher remain planned.
+
+The documentation deliberately separates implemented functionality from proposed behavior. Start with the [Quick Start](docs/QUICK-START.md) and [Evidence and Quality](docs/EVIDENCE-AND-QUALITY.md) guides when evaluating the current implementation.
+
 ## Run the current implementation
 
 From this repository root, with Node.js 20+ and pnpm 11.25.0:
