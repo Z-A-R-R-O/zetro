@@ -1,0 +1,19 @@
+{
+  "name": "@veyminore/zetro-ame-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned event contract between AME Android and ZETRO.",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
