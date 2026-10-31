@@ -89,3 +89,31 @@ test("does not accept a successful claim with an unknown state", () => {
 test("rejects array payloads", () => {
   assert.equal(validateAmeEvent({ ...validUserTurn(), payload: [] }).valid, false);
 });
+
+test("requires a one-use approval binding for actions marked high-impact", () => {
+  const base = {
+    ...validUserTurn(),
+    type: "capability.execute",
+    payload: {
+      executionId: "exec_004",
+      capabilityId: "message.send",
+      input: { recipientId: "contact_1", body: "Hi" },
+      grantId: "grant_001",
+      expiresAt: "2026-10-31T12:01:00.000Z",
+      requiresApproval: true,
+      requestDigest: "sha256:request-digest"
+    }
+  };
+  assert.equal(validateAmeEvent(base).valid, false);
+  assert.equal(validateAmeEvent({
+    ...base,
+    payload: { ...base.payload, approvalId: "approval_001" }
+  }).valid, true);
+});
+
+test("requires timezone-qualified ISO timestamps", () => {
+  assert.equal(validateAmeEvent({
+    ...validUserTurn(),
+    timestamp: "10/31/2026 12:00 PM"
+  }).valid, false);
+});
