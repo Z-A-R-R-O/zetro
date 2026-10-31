@@ -10,7 +10,7 @@ The following components have implementation branches and passing GitHub Actions
 | Android AME ZETRO client | Z-A-R-R-O/ame-upstream | Implemented; Android PR #1 merged; Kotlin compatibility fix PR #4 passes CI |
 | Conversation runtime | packages/ame-conversation-runtime | Implemented; PR #3 |
 | PostgreSQL conversation store | packages/ame-conversation-runtime | Implemented; PR #4 |
-| WebSocket gateway adapter | packages/ame-gateway | Implemented; PR #5 |
+| WebSocket gateway adapter | packages/ame-gateway | Implemented; PR #5 |\n| Device token issuer/authenticator | packages/ame-gateway/device-tokens.js | Implemented; PR #6 |
 
 These are review branches, not a deployed service. The gateway package is an adapter that attaches to a host-provided WebSocketServer; it does not itself create a TLS listener, issue device tokens, provision a database, or deploy an endpoint.
 
@@ -28,7 +28,7 @@ These are review branches, not a deployed service. The gateway package is an ada
 
 - A Node.js 20+ long-running service with a TLS-only WebSocket listener.
 - A WebSocketServer configured with maxPayload <= 64 KiB and an HTTPS upgrade route restricted to the AME path.
-- A real device-token issuer/authenticator with expiry and revocation. The gateway deliberately accepts an injected authenticate() implementation; a production token registry/issuer is still a separate task.
+- Apply 002_device_tokens.sql and provision device credentials through PostgresDeviceTokenService. It issues 256-bit random bearer tokens, stores only SHA-256 hashes, defaults to 90-day expiry (maximum 365 days), checks expiry at authentication, and supports revocation. The raw token is returned once and must be delivered to the device through a secure operator workflow.
 - PostgreSQL with migrations/001_create_ame_conversations.sql applied, DATABASE_URL, backups, access controls, retention and deletion policy.
 - A server-side provider secret such as GROQ_API_KEY and a configured supported model. Never put provider credentials in the Android app.
 - Network-level rate limits, per-device connection limits, deployment health checks and graceful shutdown.

@@ -283,3 +283,5 @@ export function attachAmeGateway({
     }
   };
 }
+
+export { PostgresDeviceTokenService } from './device-tokens.js';
