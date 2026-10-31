@@ -133,3 +133,17 @@ test("accepts a device-bound conversation resume identifier on session.open", ()
   });
   assert.equal(validateAmeEvent(event).valid, true);
 });
+
+test("rejects an invalid conversation resume identifier", () => {
+  const event = {
+    ...validUserTurn(),
+    type: "session.open",
+    payload: {
+      deviceId: "device_001",
+      appVersion: "1.0.0",
+      deviceCapabilities: [],
+      conversationId: 42
+    }
+  };
+  assert.equal(validateAmeEvent(event).valid, false);
+});
