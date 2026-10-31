@@ -46,7 +46,7 @@ export class ConversationService {
   }
 
   async open({ conversationId, principalId }) {
-    assertText(conversationId, 'conversationId', 128);
+    assertText(conversationId, 'conversationId', 160);
     assertText(principalId, 'principalId', 256);
     const existing = await this.store.get(conversationId);
     if (existing) {
@@ -58,9 +58,9 @@ export class ConversationService {
   }
 
   async *turn({ conversationId, principalId, turnId, text, signal }) {
-    assertText(conversationId, 'conversationId', 128);
+    assertText(conversationId, 'conversationId', 160);
     assertText(principalId, 'principalId', 256);
-    assertText(turnId, 'turnId', 128);
+    assertText(turnId, 'turnId', 160);
     assertText(text, 'user message');
     const lockKey = JSON.stringify([principalId, conversationId]);
     if (this.#active.has(lockKey)) throw new Error('A turn is already active for this conversation');
@@ -83,6 +83,7 @@ export class ConversationService {
         if (response.length > 24000) throw new Error('Assistant response exceeded limit');
         yield { type: 'assistant.delta', conversationId, turnId, text: delta };
       }
+      if (signal?.aborted) throw new Error('Turn cancelled');
       if (!response.trim()) throw new Error('Provider returned an empty response');
       conversation.messages.push({ role: 'assistant', content: response, turnId });
       conversation.messages = conversation.messages.slice(-MAX_HISTORY_MESSAGES);

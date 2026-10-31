@@ -1,0 +1,20 @@
+{
+  "name": "@veyminore/zetro-ame-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@veyminore/ame-conversation-runtime": "workspace:*",
+    "@veyminore/zetro-ame-protocol": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
