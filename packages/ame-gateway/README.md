@@ -98,3 +98,52 @@ The conversation store persists message content as JSONB. The token service stor
 The host must configure TLS, WebSocket maxPayload <= 64 KiB, token provisioning and revocation, edge rate limits, connection limits, database credentials, backups, retention/deletion policy, access auditing, health checks and graceful shutdown. The adapter buffers at most 256 KiB of queued inbound frames per connection and rejects duplicate/out-of-order events; this does not replace network-level rate limiting or per-device quotas.
 
 Provider API keys remain in the ZETRO server environment. The Android app receives only a revocable device bearer token and never receives provider credentials. Capability execution remains disabled until a separate authorization, approval and local Android execution boundary is implemented.
+
+## Vercel Functions host
+
+Vercel Functions WebSocket support is generally available. The package exposes `createVercelAmeRoute` to bridge Vercel's `upgradeWebSocket` handler into the same protocol/auth/runtime adapter used by Node WebSocket hosts.
+
+A Next.js App Router host route can be as small as:
+
+```js
+import { upgradeWebSocket } from '@vercel/functions';
+import pg from 'pg';
+import {
+  ConversationService,
+  GroqStreamingProvider,
+  PostgresConversationStore
+} from '@veyminore/ame-conversation-runtime';
+import {
+  PostgresDeviceTokenService,
+  createVercelAmeRoute
+} from '@veyminore/zetro-ame-gateway';
+import { attachDatabasePool } from '@vercel/functions';
+
+export const runtime = 'nodejs';
+export const maxDuration = 300;
+
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+attachDatabasePool(pool);
+
+const conversationRuntime = new ConversationService({
+  provider: new GroqStreamingProvider({
+    apiKey: process.env.GROQ_API_KEY,
+    model: process.env.GROQ_MODEL
+  }),
+  store: new PostgresConversationStore({ pool })
+});
+const deviceTokens = new PostgresDeviceTokenService({ pool });
+
+export const GET = createVercelAmeRoute({
+  upgradeWebSocket,
+  runtime: conversationRuntime,
+  authenticate: ({ authorization }) => deviceTokens.authenticate({ authorization })
+});
+```
+
+Install `@vercel/functions`, `ws`, and `pg` in the host app. Use `@vercel/functions` 3.10.0 or later; pin the exact reviewed package version in the deployment lockfile. Set `DATABASE_URL`, `GROQ_API_KEY`, and `GROQ_MODEL` as server-only Vercel environment variables. Do not commit them or expose them to the client.
+
+Configure the route at `app/api/ame/route.js`, giving the Android client the endpoint `wss://<your-domain>/api/ame`. Vercel's WebSocket connections are pinned to one Function instance for that function's maximum duration. This gateway caps a model turn at 80 seconds, and the client currently opens a connection per turn. Reconnect/resume is required for longer sessions and future persistent socket use.
+
+The Vercel Hobby team currently supports a 300-second maximum Function duration with Fluid Compute. This is sufficient for the current 80-second turn cap, but it does not make the connection permanent. Monitor invocation usage and idle connection costs. The helper has no Vercel account side effects and does not deploy or create a Vercel project.
