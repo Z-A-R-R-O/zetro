@@ -24,7 +24,9 @@ const isRecord = (value) =>
 const isNonEmptyString = (value, max = 512) =>
   typeof value === "string" && value.trim().length > 0 && value.length <= max;
 const isIsoDate = (value) =>
-  isNonEmptyString(value, 64) && !Number.isNaN(Date.parse(value));
+  typeof value === "string" &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+  !Number.isNaN(Date.parse(value));
 const isStringArray = (value, maxItems = 64) =>
   Array.isArray(value) && value.length <= maxItems &&
   value.every((item) => isNonEmptyString(item, 128));
@@ -95,7 +97,13 @@ function validatePayload(type, payload, errors) {
       object("input");
       str("grantId", 160);
       date("expiresAt");
-      if (payload.approvalId !== undefined) str("approvalId", 160);
+      need(typeof payload.requiresApproval === "boolean", "requiresApproval", "a boolean");
+      if (payload.requiresApproval) {
+        str("approvalId", 160);
+        str("requestDigest", 256);
+      } else if (payload.approvalId !== undefined) {
+        str("approvalId", 160);
+      }
       break;
     case "capability.result":
       str("executionId", 160);
@@ -124,7 +132,6 @@ function validatePayload(type, payload, errors) {
 export function validateAmeEvent(value) {
   const errors = [];
   if (!isRecord(value)) return { valid: false, errors: ["event must be an object"] };
-
   if (value.protocolVersion !== AME_PROTOCOL_VERSION) {
     errors.push("protocolVersion must equal " + AME_PROTOCOL_VERSION);
   }
@@ -139,7 +146,6 @@ export function validateAmeEvent(value) {
   if (!isIsoDate(value.timestamp)) errors.push("timestamp must be an ISO-8601 date/time");
   if (!eventTypeSet.has(value.type)) errors.push("type is unsupported: " + String(value.type));
   if (!isRecord(value.payload)) errors.push("payload must be an object");
-
   if (eventTypeSet.has(value.type) && isRecord(value.payload)) {
     validatePayload(value.type, value.payload, errors);
   }
