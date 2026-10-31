@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createAmeEvent } from '@veyminore/zetro-ame-protocol';
-import { attachAmeGateway } from './index.js';
+import { attachAmeGateway, createVercelAmeRoute } from './index.js';
 import { ConversationService, InMemoryConversationStore } from '@veyminore/ame-conversation-runtime';
 
 class FakeWebSocketServer extends EventEmitter {}
@@ -239,4 +239,65 @@ test('integrates the gateway with the real conversation service boundary', async
   const stored = await runtime.store.get(socket.sent[0].payload.conversationId);
   assert.deepEqual(stored.messages.map(message => message.role), ['user', 'assistant']);
   assert.equal(stored.messages[1].content, 'ZETRO is connected');
+});
+
+
+test('Vercel route adapter passes the bounded WSS upgrade to the gateway', async () => {
+  const runtime = {
+    async open() {},
+    async *turn() {
+      yield { type: 'assistant.complete', text: 'Vercel is connected' };
+    }
+  };
+  let capturedSocket;
+  let capturedOptions;
+  const route = createVercelAmeRoute({
+    upgradeWebSocket: async (handler, options) => {
+      capturedOptions = options;
+      capturedSocket = new FakeSocket();
+      await handler(capturedSocket);
+      return { upgraded: true };
+    },
+    runtime,
+    authenticate: async ({ authorization }) => authorization === 'Bearer vercel-token'
+      ? { deviceId: 'device-1' }
+      : null
+  });
+
+  const result = await route({
+    method: 'GET',
+    url: 'https://ame.example.com/api/ame',
+    headers: new Headers({ authorization: 'Bearer vercel-token' })
+  });
+  assert.deepEqual(result, { upgraded: true });
+  assert.equal(capturedOptions.maxPayload, 64 * 1024);
+
+  capturedSocket.receive(openEvent());
+  await waitFor(() => capturedSocket.sent.some(event => event.type === 'session.accepted'));
+  capturedSocket.receive(makeEvent({
+    sequence: 1,
+    type: 'user.turn',
+    turnId: 'vercel-turn',
+    payload: { text: 'Connect', source: 'typed', locale: 'en-IN' }
+  }));
+  await waitFor(() => capturedSocket.sent.some(event => event.type === 'assistant.complete'));
+  assert.equal(capturedSocket.sent.find(event => event.type === 'assistant.complete').payload.text, 'Vercel is connected');
+});
+
+test('Vercel route adapter rejects non-GET and non-HTTPS requests before upgrade', async () => {
+  let upgradeCalls = 0;
+  const route = createVercelAmeRoute({
+    upgradeWebSocket: async () => { upgradeCalls += 1; return {}; },
+    runtime: { async open() {}, async *turn() {} },
+    authenticate: async () => null
+  });
+  const methodResponse = await route({
+    method: 'POST', url: 'https://ame.example.com/api/ame', headers: new Headers()
+  });
+  assert.equal(methodResponse.status, 405);
+  const insecureResponse = await route({
+    method: 'GET', url: 'http://ame.example.com/api/ame', headers: new Headers()
+  });
+  assert.equal(insecureResponse.status, 400);
+  assert.equal(upgradeCalls, 0);
 });
