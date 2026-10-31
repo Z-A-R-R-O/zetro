@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./vercel": "./vercel.js"
   },
   "dependencies": {
     "@veyminore/ame-conversation-runtime": "workspace:*",
