@@ -14,6 +14,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/antigravity-adapter
 
+  packages/ame-protocol: {}
+
   packages/antigravity-adapter:
     devDependencies:
       '@types/node':
