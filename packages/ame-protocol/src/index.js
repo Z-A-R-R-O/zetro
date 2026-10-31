@@ -47,6 +47,7 @@ function validatePayload(type, payload, errors) {
       str("deviceId", 160);
       str("appVersion", 80);
       need(isStringArray(payload.deviceCapabilities), "deviceCapabilities", "an array of strings");
+      if (payload.conversationId !== undefined) str("conversationId", 160);
       break;
     case "session.accepted":
       str("conversationId", 160);
