@@ -21,6 +21,8 @@ export interface AmeCapabilityExecution {
   input: Record<string, unknown>;
   grantId: string;
   approvalId?: string;
+  requiresApproval: boolean;
+  requestDigest?: string;
   expiresAt: string;
 }
 
