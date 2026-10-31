@@ -36,7 +36,7 @@ export class PostgresDeviceTokenService {
       ? now + this.defaultTtlDays * 24 * 60 * 60 * 1000
       : Date.parse(expiresAt);
     const maxExpiration = now + this.maxTtlDays * 24 * 60 * 60 * 1000;
-    if (!Number.isFinite(expiration) || expiration <= now || expiration > maxExpiration) {
+    if (!Number.isFinite(expiration) || expiration <= now + 60_000 || expiration > maxExpiration) {
       throw new Error(`Token expiry must be in the future and within ${this.maxTtlDays} days`);
     }
 
