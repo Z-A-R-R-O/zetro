@@ -1,6 +1,6 @@
 # AME mobile integration plan
 
-**Status:** protocol foundation started; gateway and Android adapter not yet implemented.
+**Status:** protocol foundation and Android AME backend client implemented; the ZETRO-side gateway adapter and conversation port remain unimplemented.
 
 AME is the Android voice and device client. ZETRO is the cognitive/execution runtime. The two communicate through the versioned @veyminore/zetro-ame-protocol package.
 
@@ -32,7 +32,7 @@ Requirements for the future gateway:
 - TLS only; authenticated device identity; revocable credentials.
 - Per-session sequence numbers and duplicate-event rejection.
 - Bounded message sizes, event rates and concurrent sessions.
-- Reconnect with backoff and explicit session resumption semantics.
+- Reconnect with backoff and explicit session resumption semantics. For v0.1, `session.open.payload.conversationId` is optional: when present, the gateway should resume that device-owned conversation only after authenticating the same device. `session.accepted` returns the canonical `conversationId` and `serverTime`. A server must reject a conversation ID not owned by the authenticated device.
 - No model/provider secrets in the APK.
 - No action dispatch from raw model text.
 - No action replay after uncertain external effects.
@@ -59,8 +59,8 @@ High-impact actions such as sending messages or initiating calls require context
 ## Delivery slices
 
 1. **Protocol v0.1:** event envelope, payload checks and contract tests. (Started in this branch.)
-2. **Android client baseline:** build and test the selected Android foundation; preserve upstream attribution and third-party notices.
-3. **Voice Alpha:** push-to-talk, ASR, response display, TTS, cancellation and lifecycle cleanup using a demo backend.
+2. **Android client baseline:** fork the selected Android foundation, preserve upstream attribution and third-party notices, and add the AME backend transport.
+3. **Voice Alpha:** push-to-talk, ASR, response display, TTS, cancellation and lifecycle cleanup; the Android AME backend client is now implemented, but requires the server gateway.
 4. **ZETRO conversation adapter:** integrate only against an actual ZETRO conversation/agent port; do not invent one.
 5. **Authenticated gateway:** device pairing, WebSocket events, replay/sequence controls and reconnect behavior.
 6. **First capability:** timer.create, end-to-end policy check, user-visible result and tests.
