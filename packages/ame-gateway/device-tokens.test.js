@@ -63,7 +63,7 @@ test('rejects malformed, unknown, expired and revoked bearer tokens', async () =
   assert.equal(await service.authenticate({ authorization: 'Bearer short' }), null);
 
   const issued = await service.issue({ deviceId: 'device-2' });
-  assert.equal(await service.authenticate({ authorization: 'Bearer A'.repeat(43) }), null);
+  assert.equal(await service.authenticate({ authorization: 'Bearer ' + 'A'.repeat(43) }), null);
 
   pool.rows[0].expires_at = new Date(Date.now() - 1000);
   assert.equal(await service.authenticate({ authorization: `Bearer ${issued.token}` }), null);
