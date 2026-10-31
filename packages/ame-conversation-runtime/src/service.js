@@ -58,7 +58,7 @@ export class ConversationService {
   }
 
   async *turn({ conversationId, principalId, turnId, text, signal }) {
-    assertText(conversationId, 'conversationId', 128);
+    assertText(conversationId, 'conversationId', 160);
     assertText(principalId, 'principalId', 256);
     assertText(turnId, 'turnId', 160);
     assertText(text, 'user message');
