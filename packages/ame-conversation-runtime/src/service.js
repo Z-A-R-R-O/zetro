@@ -83,6 +83,7 @@ export class ConversationService {
         if (response.length > 24000) throw new Error('Assistant response exceeded limit');
         yield { type: 'assistant.delta', conversationId, turnId, text: delta };
       }
+      if (signal?.aborted) throw new Error('Turn cancelled');
       if (!response.trim()) throw new Error('Provider returned an empty response');
       conversation.messages.push({ role: 'assistant', content: response, turnId });
       conversation.messages = conversation.messages.slice(-MAX_HISTORY_MESSAGES);
