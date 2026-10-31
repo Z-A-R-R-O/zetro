@@ -140,6 +140,7 @@ export function attachAmeGateway({
 
     const processMessage = async text => {
       const identity = await authenticatePromise;
+      if (state.closed) return;
       let event;
       try {
         event = JSON.parse(text);
