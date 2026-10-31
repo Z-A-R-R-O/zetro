@@ -25,6 +25,17 @@ importers:
 
   packages/ame-conversation-runtime: {}
 
+  packages/ame-protocol: {}
+
+  packages/ame-gateway:
+    dependencies:
+      '@veyminore/ame-conversation-runtime':
+        specifier: workspace:*
+        version: link:../ame-conversation-runtime
+      '@veyminore/zetro-ame-protocol':
+        specifier: workspace:*
+        version: link:../ame-protocol
+
   packages/context-budget: {}
 
   packages/orchestration-core: {}
