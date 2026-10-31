@@ -4,6 +4,7 @@ import { createAmeEvent, validateAmeEvent } from '@veyminore/zetro-ame-protocol'
 const MAX_EVENT_BYTES = 64 * 1024;
 const MAX_QUEUED_BYTES = 256 * 1024;
 const MAX_ASSISTANT_DELTA_CHARS = 8000;
+const TURN_TIMEOUT_MS = 80_000;
 
 function isNonEmptyString(value, max = 256) {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max;
@@ -193,6 +194,12 @@ export function attachAmeGateway({
       if (!isNonEmptyString(event.turnId, 160)) throw new Error('user.turn requires a turnId');
 
       const controller = new AbortController();
+      let turnTimedOut = false;
+      const turnTimeout = setTimeout(() => {
+        turnTimedOut = true;
+        controller.abort();
+      }, TURN_TIMEOUT_MS);
+      turnTimeout.unref?.();
       state.activeController = controller;
       try {
         for await (const update of runtime.turn({
@@ -212,11 +219,16 @@ export function attachAmeGateway({
           }
         }
       } catch (error) {
-        if (!state.closed && !controller.signal.aborted) {
+        if (!state.closed) {
           report(error, { phase: 'turn', sessionId: state.sessionId, turnId: event.turnId });
-          sendProtocolError('TURN_FAILED', 'ZETRO could not complete this response.', true);
+          if (turnTimedOut) {
+            sendProtocolError('TURN_TIMEOUT', 'ZETRO response timed out. Please retry.', true);
+          } else if (!controller.signal.aborted) {
+            sendProtocolError('TURN_FAILED', 'ZETRO could not complete this response.', true);
+          }
         }
       } finally {
+        clearTimeout(turnTimeout);
         if (state.activeController === controller) state.activeController = null;
       }
     };
