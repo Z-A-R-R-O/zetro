@@ -79,7 +79,7 @@ test('revokes tokens and prevents subsequent authentication', async () => {
 });
 
 test('enforces a future expiry no longer than the configured maximum', async () => {
-  const service = new PostgresDeviceTokenService({ pool: new FakeTokenPool(), maxTtlDays: 30 });
+  const service = new PostgresDeviceTokenService({ pool: new FakeTokenPool(), defaultTtlDays: 7, maxTtlDays: 30 });
   await assert.rejects(
     service.issue({ deviceId: 'device-4', expiresAt: new Date(Date.now() + 31 * 86400000).toISOString() }),
     /within 30 days/
