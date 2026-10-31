@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS ame_conversations (
-  conversation_id VARCHAR(128) PRIMARY KEY,
+  conversation_id VARCHAR(160) PRIMARY KEY,
   principal_id VARCHAR(256) NOT NULL,
   messages JSONB NOT NULL DEFAULT '[]'::jsonb,
   version BIGINT NOT NULL DEFAULT 0 CHECK (version >= 0),
