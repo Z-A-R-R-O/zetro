@@ -44,7 +44,7 @@ When TLS terminates at a trusted reverse proxy, explicitly provide an isSecureRe
 - Returns session.accepted with a canonical conversationId and serverTime.
 - Accepts strictly increasing inbound sequence numbers, unique event IDs and bounded text events.
 - Streams assistant.delta events and one assistant.complete event from ConversationService.
-- Supports session.close and user.turn only after session.open.
+- Supports session.close and user.turn only after session.open; cancels responses after 80 seconds, below the Android client's 90-second response timeout.
 - Rejects capability execution/approval events in this alpha. No device actions are performed by this gateway.
 
 ## Production boundaries
