@@ -8,12 +8,17 @@ This package deliberately does not create an HTTP server, terminate TLS, store d
 
 ```js
 import { WebSocketServer } from 'ws';
-import { attachAmeGateway } from '@veyminore/zetro-ame-gateway';
+import { attachAmeGateway, PostgresDeviceTokenService } from '@veyminore/zetro-ame-gateway';
 
 const webSocketServer = new WebSocketServer({
   noServer: true,
   maxPayload: 64 * 1024
 });
+
+const deviceTokens = new PostgresDeviceTokenService({ pool });
+// Provision once through a secured operator workflow and deliver the returned
+// token to the paired AME device. Never log or persist the plaintext token.
+const issued = await deviceTokens.issue({ deviceId: 'device-id', label: 'AME phone' });
 
 const gateway = attachAmeGateway({
   webSocketServer,
@@ -21,7 +26,7 @@ const gateway = attachAmeGateway({
   authenticate: async ({ authorization }) => {
     // Verify signature/secret, expiry, revocation and device binding.
     // Return the device ID bound to this credential; never log the token.
-    return deviceTokenService.authenticate(authorization);
+    return deviceTokens.authenticate({ authorization });
   },
   onError: ({ error, phase, sessionId, turnId }) => {
     // Send redacted operational telemetry. Do not log authorization headers or prompt bodies.
@@ -39,7 +44,7 @@ When TLS terminates at a trusted reverse proxy, explicitly provide an isSecureRe
 ## Protocol behavior
 
 - Requires TLS and an Authorization: Bearer header.
-- Calls the injected authenticator and binds conversations to its returned deviceId.
+- Calls the injected authenticator and binds conversations to its returned deviceId. PostgresDeviceTokenService supplies one-time 256-bit token issuance, SHA-256 hash storage, expiry checks and revocation.
 - Requires the session.open event as the first event with sequence 0 and a matching payload deviceId.
 - Returns session.accepted with a canonical conversationId and serverTime.
 - Accepts strictly increasing inbound sequence numbers, unique event IDs and bounded text events.
