@@ -32,7 +32,7 @@ Requirements for the future gateway:
 - TLS only; authenticated device identity; revocable credentials.
 - Per-session sequence numbers and duplicate-event rejection.
 - Bounded message sizes, event rates and concurrent sessions.
-- Reconnect with backoff and explicit session resumption semantics. For v0.1, `session.open.payload.conversationId` is optional: when present, the gateway should resume that device-owned conversation only after authenticating the same device. `session.accepted` returns the canonical `conversationId` and `serverTime`. A server must reject a conversation ID not owned by the authenticated device.
+- Reconnect with backoff and explicit session resumption semantics. For v0.1, `session.open.payload.conversationId` is optional. When present, the gateway may create that client-selected conversation ID if it is new, or resume it if it already exists; either way it must bind the ID to the authenticated device and reject attempts by another device to claim or resume it. `session.accepted` returns the canonical `conversationId` and `serverTime`.
 - No model/provider secrets in the APK.
 - No action dispatch from raw model text.
 - No action replay after uncertain external effects.
