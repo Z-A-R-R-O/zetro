@@ -40,7 +40,10 @@ test('rejects duplicate turn IDs and concurrent turns', async () => {
   const iterator = service.turn({ conversationId: 'c1', principalId: 'device1', turnId: 't1', text: 'Hi' });
   await iterator.next();
   await assert.rejects(service.turn({ conversationId: 'c1', principalId: 'device1', turnId: 't2', text: 'Again' }).next(), /already active/);
+  const pending = iterator.next();
+  await new Promise(resolve => setImmediate(resolve));
   release();
+  await pending;
   for await (const _ of iterator) { /* drain */ }
   await assert.rejects(async () => { for await (const _ of service.turn({ conversationId: 'c1', principalId: 'device1', turnId: 't1', text: 'Hi again' })) {} }, /Duplicate turnId/);
 });
