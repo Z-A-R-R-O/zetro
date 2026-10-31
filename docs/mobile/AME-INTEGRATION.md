@@ -39,7 +39,7 @@ Requirements for the future gateway:
 
 ## Capability dispatch
 
-A ZETRO plan may propose a namespaced capability such as timer.create. The AME client reports which capabilities are installed and currently available. Before execution, ZETRO checks the principal, device, session, resource scope, expiry and approval requirement. AME independently checks OS permission and local support. The result reports state, effect and verification separately.
+A ZETRO plan may propose a namespaced capability such as timer.create. The AME client reports which capabilities are installed and currently available. Before execution, ZETRO checks the principal, device, session, resource scope, expiry and approval requirement. An approval-required execution must carry a one-use approval ID and a digest of the exact normalized request; AME must reject a missing or mismatched approval. AME independently checks OS permission and local support. The result reports state, effect and verification separately.
 
 Initial candidate capabilities, each implemented independently:
 
