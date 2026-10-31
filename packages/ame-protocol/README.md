@@ -27,29 +27,10 @@ Protocol foundation v0.1. This package validates event envelopes and a small set
 - turnId is optional and may be null for session-level events.
 - Transport authentication is out-of-band; bearer tokens and secrets must never be embedded in event payloads.
 - A capability ID is namespaced, such as timer.create or contacts.search.
-- capability.execute must contain a scoped grantId and an expiry. High-impact actions also require a one-use approval bound to the exact normalized request.
+- capability.execute must contain a scoped grantId, an expiry and a requiresApproval flag. When requiresApproval is true, it must also contain approvalId and requestDigest, binding the one-use approval to the exact normalized request.
 - state, effect and verification are separate. completed does not imply verified.
 - Android validates that a capability exists locally and is permitted before performing it. ZETRO validates policy immediately before dispatch.
 - Unknown protocol versions and event types are rejected.
-
-## Use
-
-    import { createAmeEvent, validateAmeEvent } from "@veyminore/zetro-ame-protocol";
-
-    const event = createAmeEvent({
-      eventId: "evt_123",
-      sessionId: "ses_123",
-      sequence: 1,
-      type: "user.turn",
-      payload: {
-        text: "What is on my calendar?",
-        source: "transcribed",
-        locale: "en-IN"
-      }
-    });
-
-    const result = validateAmeEvent(event);
-    if (!result.valid) throw new Error(result.errors.join("; "));
 
 ## Tests
 
