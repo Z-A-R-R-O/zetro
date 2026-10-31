@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createAmeEvent } from '@veyminore/zetro-ame-protocol';
 import { attachAmeGateway } from './index.js';
+import { ConversationService, InMemoryConversationStore } from '@veyminore/ame-conversation-runtime';
 
 class FakeWebSocketServer extends EventEmitter {}
 
@@ -209,4 +210,33 @@ test('does not accept capability execution events in the chat-only gateway alpha
   await waitFor(() => socket.closeCode !== null);
   assert.equal(socket.closeCode, 1008);
   assert.equal(socket.sent[1].type, 'session.error');
+});
+
+
+test('integrates the gateway with the real conversation service boundary', async () => {
+  const runtime = new ConversationService({
+    provider: {
+      async *stream() {
+        yield 'ZETRO';
+        yield ' is connected';
+      }
+    },
+    store: new InMemoryConversationStore()
+  });
+  const { socket } = connect({ runtime });
+  socket.receive(openEvent());
+  await waitFor(() => socket.sent.some(event => event.type === 'session.accepted'));
+  socket.receive(makeEvent({
+    sequence: 1,
+    type: 'user.turn',
+    turnId: 'turn-integration',
+    payload: { text: 'Are you connected?', source: 'typed', locale: 'en-IN' }
+  }));
+  await waitFor(() => socket.sent.some(event => event.type === 'assistant.complete'));
+
+  const complete = socket.sent.find(event => event.type === 'assistant.complete');
+  assert.equal(complete.payload.text, 'ZETRO is connected');
+  const stored = await runtime.store.get(socket.sent[0].payload.conversationId);
+  assert.deepEqual(stored.messages.map(message => message.role), ['user', 'assistant']);
+  assert.equal(stored.messages[1].content, 'ZETRO is connected');
 });
