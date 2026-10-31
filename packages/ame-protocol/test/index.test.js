@@ -117,3 +117,19 @@ test("requires timezone-qualified ISO timestamps", () => {
     timestamp: "10/31/2026 12:00 PM"
   }).valid, false);
 });
+
+test("accepts a device-bound conversation resume identifier on session.open", () => {
+  const event = createAmeEvent({
+    eventId: "evt_resume_001",
+    sessionId: "ses_001",
+    sequence: 0,
+    type: "session.open",
+    payload: {
+      deviceId: "device_001",
+      appVersion: "1.0.0",
+      deviceCapabilities: [],
+      conversationId: "conversation_001"
+    }
+  });
+  assert.equal(validateAmeEvent(event).valid, true);
+});
