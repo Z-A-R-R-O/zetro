@@ -17,7 +17,7 @@ export class InMemoryConversationStore {
 
   async create({ conversationId, principalId }) {
     if (this.#conversations.has(conversationId)) throw new Error('Conversation already exists');
-    const value = { conversationId, principalId, messages: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const value = { conversationId, principalId, messages: [], version: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     this.#conversations.set(conversationId, value);
     return structuredClone(value);
   }
@@ -25,7 +25,8 @@ export class InMemoryConversationStore {
   async save(conversation) {
     const current = this.#conversations.get(conversation.conversationId);
     if (!current || current.principalId !== conversation.principalId) throw new Error('Conversation not found');
-    const value = { ...structuredClone(conversation), updatedAt: new Date().toISOString() };
+    if (current.version !== conversation.version) throw new Error('Conversation version conflict; reload before retrying');
+    const value = { ...structuredClone(conversation), version: current.version + 1, updatedAt: new Date().toISOString() };
     this.#conversations.set(value.conversationId, value);
     return structuredClone(value);
   }
@@ -61,18 +62,18 @@ export class ConversationService {
     assertText(principalId, 'principalId', 256);
     assertText(turnId, 'turnId', 128);
     assertText(text, 'user message');
-    const lockKey = `${principalId}:${conversationId}`;
+    const lockKey = JSON.stringify([principalId, conversationId]);
     if (this.#active.has(lockKey)) throw new Error('A turn is already active for this conversation');
     this.#active.add(lockKey);
     try {
-      const conversation = await this.store.get(conversationId);
+      let conversation = await this.store.get(conversationId);
       if (!conversation || conversation.principalId !== principalId) throw new Error('Conversation not found');
       if (conversation.messages.some(message => message.turnId === turnId)) throw new Error('Duplicate turnId');
       const history = conversation.messages.slice(-MAX_HISTORY_MESSAGES);
       const userMessage = { role: 'user', content: text, turnId };
       const messages = [{ role: 'system', content: this.systemPrompt }, ...history.map(({ role, content }) => ({ role, content })), { role: 'user', content: text }];
       conversation.messages.push(userMessage);
-      await this.store.save(conversation);
+      conversation = await this.store.save(conversation);
       let response = '';
       yield { type: 'assistant.started', conversationId, turnId };
       for await (const delta of this.provider.stream({ messages, signal })) {
@@ -85,7 +86,7 @@ export class ConversationService {
       if (!response.trim()) throw new Error('Provider returned an empty response');
       conversation.messages.push({ role: 'assistant', content: response, turnId });
       conversation.messages = conversation.messages.slice(-MAX_HISTORY_MESSAGES);
-      await this.store.save(conversation);
+      conversation = await this.store.save(conversation);
       yield { type: 'assistant.complete', conversationId, turnId, text: response };
     } finally {
       this.#active.delete(lockKey);
